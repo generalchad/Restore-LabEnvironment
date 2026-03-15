@@ -1,0 +1,54 @@
+[
+  {
+    "DisplayName": "GPO-SEC-GLOBAL-Hardening",
+    "TargetOU": "",
+    "Comment": "Root-level security baseline for the entire organization.",
+    "Settings": [
+      { "Key": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", "ValueName": "DisplayLastLogonInfo", "Type": "DWord", "Value": 1 }
+    ]
+  },
+  {
+    "DisplayName": "GPO-SEC-GLOBAL-PSLogging",
+    "TargetOU": "",
+    "Comment": "Enable PowerShell Script Block Logging for incident response and threat hunting.",
+    "Settings": [
+      { "Key": "HKLM\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging", "ValueName": "EnableScriptBlockLogging", "Type": "DWord", "Value": 1 }
+    ]
+  },
+  {
+    "DisplayName": "GPO-SEC-WKS-Baseline",
+    "TargetOU": "Workstations",
+    "Comment": "General workstation security: Screensaver and session locking.",
+    "Settings": [
+      { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\Control Panel\\Desktop", "ValueName": "ScreenSaveTimeOut", "Type": "String", "Value": "900" },
+      { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\Control Panel\\Desktop", "ValueName": "ScreenSaverIsSecure", "Type": "String", "Value": "1" }
+    ]
+  },
+  {
+    "DisplayName": "GPO-SEC-WKS-Network",
+    "TargetOU": "Workstations",
+    "Comment": "Network hardening: Restrict anonymous enumeration and disable SMBv1.",
+    "Settings": [
+      { "Key": "HKLM\\Software\\System\\CurrentControlSet\\Control\\Lsa", "ValueName": "RestrictAnonymous", "Type": "DWord", "Value": 1 },
+      { "Key": "HKLM\\System\\CurrentControlSet\\Services\\LanmanServer\\Parameters", "ValueName": "SMB1", "Type": "DWord", "Value": 0 }
+    ]
+  },
+  {
+    "DisplayName": "GPO-SEC-SRV-Baseline",
+    "TargetOU": "Servers",
+    "Comment": "Server specific hardening: Require NLA for RDP and secure RPC.",
+    "Settings": [
+      { "Key": "HKLM\\Software\\Policies\\Microsoft\\Windows NT\\Terminal Services", "ValueName": "UserAuthentication", "Type": "DWord", "Value": 1 },
+      { "Key": "HKLM\\Software\\Policies\\Microsoft\\Windows NT\\Rpc", "ValueName": "RestrictRemoteClients", "Type": "DWord", "Value": 1 }
+    ]
+  },
+  {
+    "DisplayName": "GPO-SEC-STG-Quarantine",
+    "TargetOU": "_Staging",
+    "Comment": "Lockdown policy for new and quarantined devices.",
+    "Settings": [
+      { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\System", "ValueName": "DisableCMD", "Type": "DWord", "Value": 1 },
+      { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer", "ValueName": "NoControlPanel", "Type": "DWord", "Value": 1 }
+    ]
+  }
+]

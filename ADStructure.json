@@ -1,0 +1,198 @@
+[
+  {
+    "Name": "_Admin",
+    "ParentOU": ""
+  },
+  {
+    "Name": "Tier 0",
+    "ParentOU": "_Admin"
+  },
+  {
+    "Name": "T0_Accounts",
+    "ParentOU": "_Admin/Tier 0"
+  },
+  {
+    "Name": "T0_gMSA",
+    "ParentOU": "_Admin/Tier 0"
+  },
+  {
+    "Name": "T0_Groups",
+    "ParentOU": "_Admin/Tier 0"
+  },
+  {
+    "Name": "T0_PAWs",
+    "ParentOU": "_Admin/Tier 0"
+  },
+  {
+    "Name": "T0_ServiceAccounts",
+    "ParentOU": "_Admin/Tier 0"
+  },
+  {
+    "Name": "Tier 1",
+    "ParentOU": "_Admin"
+  },
+  {
+    "Name": "T1_Accounts",
+    "ParentOU": "_Admin/Tier 1"
+  },
+  {
+    "Name": "T1_gMSA",
+    "ParentOU": "_Admin/Tier 1"
+  },
+  {
+    "Name": "T1_Groups",
+    "ParentOU": "_Admin/Tier 1"
+  },
+  {
+    "Name": "T1_PAWs",
+    "ParentOU": "_Admin/Tier 1"
+  },
+  {
+    "Name": "T1_ServiceAccounts",
+    "ParentOU": "_Admin/Tier 1"
+  },
+  {
+    "Name": "Tier 2",
+    "ParentOU": "_Admin"
+  },
+  {
+    "Name": "T2_Accounts",
+    "ParentOU": "_Admin/Tier 2"
+  },
+  {
+    "Name": "T2_gMSA",
+    "ParentOU": "_Admin/Tier 2"
+  },
+  {
+    "Name": "T2_Groups",
+    "ParentOU": "_Admin/Tier 2"
+  },
+  {
+    "Name": "T2_PAWs",
+    "ParentOU": "_Admin/Tier 2"
+  },
+  {
+    "Name": "T2_ServiceAccounts",
+    "ParentOU": "_Admin/Tier 2"
+  },
+  {
+    "Name": "_DisabledObjects",
+    "ParentOU": ""
+  },
+  {
+    "Name": "_Quarantine",
+    "ParentOU": ""
+  },
+  {
+    "Name": "_ServiceAccounts",
+    "ParentOU": ""
+  },
+  {
+    "Name": "Managed",
+    "ParentOU": "_ServiceAccounts"
+  },
+  {
+    "Name": "Standard",
+    "ParentOU": "_ServiceAccounts"
+  },
+  {
+    "Name": "_Staging",
+    "ParentOU": ""
+  },
+  {
+    "Name": "GPO_Test",
+    "ParentOU": "_Staging"
+  },
+  {
+    "Name": "Groups",
+    "ParentOU": ""
+  },
+  {
+    "Name": "Access",
+    "ParentOU": "Groups"
+  },
+  {
+    "Name": "Distribution",
+    "ParentOU": "Groups"
+  },
+  {
+    "Name": "Management",
+    "ParentOU": "Groups"
+  },
+  {
+    "Name": "Roles",
+    "ParentOU": "Groups"
+  },
+  {
+    "Name": "Security",
+    "ParentOU": "Groups"
+  },
+  {
+    "Name": "Servers",
+    "ParentOU": ""
+  },
+  {
+    "Name": "Applications",
+    "ParentOU": "Servers"
+  },
+  {
+    "Name": "Database",
+    "ParentOU": "Servers"
+  },
+  {
+    "Name": "File",
+    "ParentOU": "Servers"
+  },
+  {
+    "Name": "Infrastructure",
+    "ParentOU": "Servers"
+  },
+  {
+    "Name": "Print",
+    "ParentOU": "Servers"
+  },
+  {
+    "Name": "Web",
+    "ParentOU": "Servers"
+  },
+  {
+    "Name": "Users",
+    "ParentOU": ""
+  },
+  {
+    "Name": "Contractors",
+    "ParentOU": "Users"
+  },
+  {
+    "Name": "Employees",
+    "ParentOU": "Users"
+  },
+  {
+    "Name": "External",
+    "ParentOU": "Users"
+  },
+  {
+    "Name": "Vendors",
+    "ParentOU": "Users/External"
+  },
+  {
+    "Name": "Workstations",
+    "ParentOU": ""
+  },
+  {
+    "Name": "Desktops",
+    "ParentOU": "Workstations"
+  },
+  {
+    "Name": "Kiosks",
+    "ParentOU": "Workstations"
+  },
+  {
+    "Name": "Laptops",
+    "ParentOU": "Workstations"
+  },
+  {
+    "Name": "VDI",
+    "ParentOU": "Workstations"
+  }
+]
