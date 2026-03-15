@@ -1,74 +1,57 @@
 function Restore-ADUsers {
     [CmdletBinding(SupportsShouldProcess=$true)]
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$OrgNameInput,
+    param([string]$OrgNameInput, [string]$JsonPath)
 
-        [string]$JsonPath = ".\ADUserData.json"
-    )
+    if (-not (Test-Path $JsonPath)) { return }
+    $Domain = Get-ADDomain
+    $RootDN = "OU=$OrgNameInput,$($Domain.DistinguishedName)"
+    $Pass = ConvertTo-SecureString "Welcome1" -AsPlainText -Force
 
-    process {
-        if (-not (Test-Path $JsonPath)) { Write-Error "JSON file not found."; return }
-        try {
-            $DomainDN = (Get-ADDomain).DistinguishedName
-            $DomainFQDN = (Get-ADDomain).DNSRoot
-        } catch { Write-Error "AD Connection failed."; return }
+    Get-Content $JsonPath | ConvertFrom-Json | ForEach-Object {
+        $U = $_
+        if ($U.Type -eq "Admin") {
+            $AccPath = "OU=T$($U.Tier)_Accounts,OU=Tier $($U.Tier),OU=_Admin,$RootDN"
+            $GrpPath = "OU=T$($U.Tier)_Groups,OU=Tier $($U.Tier),OU=_Admin,$RootDN"
+            $GrpName = "GRP-SEC-ADMIN-Tier-$($U.Tier)-Admins"
+        } else {
+            $Base = "OU=$($U.Type),OU=Users,$RootDN"
 
-        $OrgName = "_" + $OrgNameInput.Trim().TrimStart('_').ToUpper()
-        $RootPath = "OU=$OrgName,$DomainDN"
-        $SecurePass = ConvertTo-SecureString "Welcome1" -AsPlainText -Force
-
-        $UserData = Get-Content -Raw -Path $JsonPath | ConvertFrom-Json
-
-        foreach ($User in $UserData) {
-            # 1. Pathing & Group Logic
-            if ($User.Type -eq "Admin") {
-                $AccountPath = "OU=T$($User.Tier)_Accounts,OU=Tier $($User.Tier),OU=_Admin,$RootPath"
-                $GroupPath   = "OU=T$($User.Tier)_Groups,OU=Tier $($User.Tier),OU=_Admin,$RootPath"
-                $GroupName   = "GRP-SEC-ADMIN-Tier-$($User.Tier)-Admins"
+            # FIXED: Replaced ternary with standard If/Else
+            if ($U.Department) {
+                $AccPath = "OU=$($U.Department),$Base"
             } else {
-                $BaseUserPath = "OU=$($User.Type),OU=Users,$RootPath"
-                $GroupPath    = "OU=Roles,OU=Groups,$RootPath"
-                $GroupName    = "Role-General-$($User.Type)"
-                $AccountPath = if (-not [string]::IsNullOrWhiteSpace($User.Department)) { "OU=$($User.Department),$BaseUserPath" } else { $BaseUserPath }
+                $AccPath = $Base
             }
 
-            # 2. Ensure Security Group exists
-            if (-not (Get-ADGroup -Filter "Name -eq '$GroupName'" -ErrorAction SilentlyContinue)) {
-                if ($PSCmdlet.ShouldProcess($GroupName, "Create Security Group")) {
-                    New-ADGroup -Name $GroupName -GroupCategory Security -GroupScope Global -Path $GroupPath
-                }
-            }
+            $GrpPath = "OU=Roles,OU=Groups,$RootDN"
+            $GrpName = "Role-General-$($U.Type)"
+        }
 
-            # 3. Create User
-            if (-not (Get-ADUser -Filter "SamAccountName -eq '$($User.SamAccountName)'" -ErrorAction SilentlyContinue)) {
-                $UserParams = @{
-                    Name = $User.SamAccountName; SamAccountName = $User.SamAccountName
-                    UserPrincipalName = "$($User.SamAccountName)@$DomainFQDN"
-                    DisplayName = "$($User.FirstName) $($User.LastName)"; Path = $AccountPath
-                    AccountPassword = $SecurePass; Enabled = $true; ChangePasswordAtLogon = $false
-                }
-                if ($PSCmdlet.ShouldProcess($User.SamAccountName, "Create User")) {
-                    New-ADUser @UserParams
-                    Add-ADGroupMember -Identity $GroupName -Members $User.SamAccountName
-                }
-            }
-
-            # 4. Tier 0 Nesting (FIX FOR LOGIN ISSUE)
-            if ($User.Tier -eq 0) {
-                $BuiltInAdmin = "Domain Admins"
-                if ($PSCmdlet.ShouldProcess($GroupName, "Nest $GroupName into $BuiltInAdmin")) {
-                    # Check if already a member to avoid non-terminating errors
-                    $IsMember = Get-ADGroupMember -Identity $BuiltInAdmin | Where-Object { $_.name -eq $GroupName }
-                    if (-not $IsMember) {
-                        Add-ADGroupMember -Identity $BuiltInAdmin -Members $GroupName
-                        Write-Host "Nested $GroupName into $BuiltInAdmin." -ForegroundColor Yellow
-                    }
-                }
+        # Create Group
+        if (-not (Get-ADGroup -Filter "Name -eq '$GrpName'" -ErrorAction SilentlyContinue)) {
+            if ($PSCmdlet.ShouldProcess($GrpName, "Create Security Group")) {
+                New-ADGroup -Name $GrpName -GroupCategory Security -GroupScope Global -Path $GrpPath
+                Write-Host " [+] Group Created: $GrpName" -ForegroundColor Cyan
             }
         }
-        Write-Host "AD User Restoration Completed." -ForegroundColor Cyan
+
+        # Create User
+        if (-not (Get-ADUser -Filter "SamAccountName -eq '$($U.SamAccountName)'" -ErrorAction SilentlyContinue)) {
+            if ($PSCmdlet.ShouldProcess($U.SamAccountName)) {
+                $UserParams = @{
+                    Name              = $U.SamAccountName
+                    SamAccountName    = $U.SamAccountName
+                    Path              = $AccPath
+                    UserPrincipalName = "$($U.SamAccountName)@$($Domain.DNSRoot)"
+                    DisplayName       = "$($U.FirstName) $($U.LastName)"
+                    AccountPassword   = $Pass
+                    Enabled           = $true
+                }
+                New-ADUser @UserParams
+                Add-ADGroupMember -Identity $GrpName -Members $U.SamAccountName
+                Write-Host " [+] User Created: $($U.SamAccountName)" -ForegroundColor Green
+            }
+        }
     }
 }
-
 Export-ModuleMember -Function Restore-ADUsers

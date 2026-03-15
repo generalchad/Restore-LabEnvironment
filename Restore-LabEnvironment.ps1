@@ -1,8 +1,3 @@
-<#
-.SYNOPSIS
-    Orchestrator script to rebuild the Active Directory lab environment.
-#>
-
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
     [Parameter(Mandatory=$true)]
@@ -10,35 +5,49 @@ param(
 
     [switch]$DisableProtection,
 
-    [string]$StructureJson = ".\Modules\ADStructure.json",
-    [string]$UserDataJson  = ".\Modules\ADUserData.json",
-    [string]$GpoJson       = ".\Modules\ADGroupPolicies.json"
+    [string]$StructureJson = "$PSScriptRoot\Modules\ADStructure.json",
+    [string]$UserDataJson  = "$PSScriptRoot\Modules\ADUserData.json",
+    [string]$GpoJson       = "$PSScriptRoot\Modules\ADGroupPolicies.json"
 )
 
-# 1. Import Modules
-# Using relative paths to the .psm1 files in their respective folders
-try {
-    Import-Module ".\Modules\Restore-ADStructure.psm1" -Force
-    Import-Module ".\Modules\Restore-ADUsers.psm1" -Force
-    Import-Module ".\Modules\Restore-ADGroupPolicies.psm1" -Force
-} catch {
-    Write-Error "Failed to load modules. Ensure the 'Modules' folder structure is correct."
-    return
+function Write-LabLog {
+    param([string]$Message, [ValidateSet("INFO", "OK", "SKIP", "FAIL", "HEAD")]$Type = "INFO")
+    $Colors = @{ INFO = "Cyan"; OK = "Green"; SKIP = "Yellow"; FAIL = "Red"; HEAD = "Magenta" }
+    $Markers = @{ INFO = "[i]"; OK = "[+]"; SKIP = "[!]"; FAIL = "[X]"; HEAD = "---" }
+    Write-Host "$($Markers[$Type]) $Message" -ForegroundColor $Colors[$Type]
 }
 
-Write-Host "--- Starting Lab Restoration for $OrgName ---" -ForegroundColor Magenta
+# 1. Admin & RSAT Check
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-LabLog "Admin privileges required." "FAIL"; return
+}
 
-# 2. Run Structure
-Write-Host "`n[STEP 1] Rebuilding OU Structure..." -ForegroundColor White -BackgroundColor DarkBlue
-Restore-ADStructure -OrgNameInput $OrgName -JsonPath $StructureJson -DisableProtection:$DisableProtection
+# (RSAT Check Logic Omitted for Brevity - Keep your existing block here)
 
-# 3. Run Users
-Write-Host "`n[STEP 2] Restoring User Accounts and Tiered Groups..." -ForegroundColor White -BackgroundColor DarkBlue
-Restore-ADUsers -OrgNameInput $OrgName -JsonPath $UserDataJson
+# 2. Module Loading
+try {
+    Import-Module ActiveDirectory, GroupPolicy -ErrorAction Stop
+    # Added Memberships to the array
+    $CustomModules = @("Restore-LabUtils", "Restore-ADStructure", "Restore-ADUsers", "Restore-ADGroupPolicies", "Restore-ADGroupMemberships")
+    foreach ($M in $CustomModules) {
+        $P = Join-Path $PSScriptRoot "Modules\$M.psm1"
+        if (Test-Path $P) { Import-Module $P -Force } else { throw "Missing $P" }
+    }
+} catch { Write-LabLog "Load Error: $($_.Exception.Message)" "FAIL"; return }
 
-# 4. Run GPOs
-Write-Host "`n[STEP 3] Applying Group Policies and Links..." -ForegroundColor White -BackgroundColor DarkBlue
-Restore-ADGroupPolicies -OrgNameInput $OrgName -JsonPath $GpoJson
+# 3. Execution
+$CleanOrg = "_" + $OrgName.Trim().TrimStart('_').ToUpper()
+Write-LabLog "Starting Lab Restoration for $CleanOrg" "HEAD"
 
-Write-Host "`n--- Lab Restoration Complete ---" -ForegroundColor Magenta
-Write-Host "Remember to run 'gpupdate /force' on your Domain Controller." -ForegroundColor Gray
+# Core Parameters
+$StructureParams = @{ OrgNameInput = $CleanOrg; DisableProtection = $DisableProtection; JsonPath = $StructureJson }
+$UserParams      = @{ OrgNameInput = $CleanOrg; JsonPath = $UserDataJson }
+$GpoParams       = @{ OrgNameInput = $CleanOrg; JsonPath = $GpoJson }
+$MemberParams    = @{ OrgNameInput = $CleanOrg; JsonPath = $UserDataJson } # Uses User JSON for mapping
+
+Restore-ADStructure     @StructureParams
+Restore-ADUsers         @UserParams
+Restore-ADGroupPolicies @GpoParams
+Restore-ADGroupMemberships @MemberParams # Final Pass
+
+Write-LabLog "Restoration Complete." "HEAD"

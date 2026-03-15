@@ -1,63 +1,33 @@
 function Restore-ADStructure {
     [CmdletBinding(SupportsShouldProcess=$true)]
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$OrgNameInput,
+    param([string]$OrgNameInput, [string]$JsonPath, [switch]$DisableProtection)
 
-        [string]$JsonPath = ".\ADStructure.json",
+    $DomainDN = (Get-ADDomain).DistinguishedName
+    $RootPath = "OU=$OrgNameInput,$DomainDN"
+    $Prot = -not $DisableProtection
 
-        [Parameter(Mandatory=$false)]
-        [switch]$DisableProtection
-    )
+    # Ensure Root OU
+    if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$RootPath'" -ErrorAction SilentlyContinue)) {
+        if ($PSCmdlet.ShouldProcess($RootPath, "Create Root OU")) {
+            New-ADOrganizationalUnit -Name $OrgNameInput -Path $DomainDN -ProtectedFromAccidentalDeletion $Prot
+            Write-Host "[+] Created Root: $OrgNameInput" -ForegroundColor Green
+        }
+    }
 
-    process {
-        # 1. Prerequisites & Initialization
-        try { Import-Module ActiveDirectory -ErrorAction Stop }
-        catch { Write-Error "RSAT ActiveDirectory module missing."; return }
+    if (-not (Test-Path $JsonPath)) { return }
+    # Sort by depth (number of slashes) to ensure parents are created before children
+    $OUs = Get-Content $JsonPath | ConvertFrom-Json | Sort-Object { ($_.ParentOU -split '/').Count }
 
-        $ProtectionValue = -not $DisableProtection
-        $DomainDN = (Get-ADDomain).DistinguishedName
-        $OrgName = "_" + $OrgNameInput.Trim().TrimStart('_').ToUpper()
-        $RootPath = "OU=$OrgName,$DomainDN"
+    foreach ($OU in $OUs) {
+        $Parent = Get-LabDN -SlashPath $OU.ParentOU -RootDN $RootPath
+        $Target = "OU=$($OU.Name),$Parent"
 
-        # 2. Helper Function (Preserved from your current version)
-        function New-OUHelper {
-            param($Name, $Path, $IsProtected)
-            $FullDN = "OU=$Name,$Path"
-            if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$FullDN'" -ErrorAction SilentlyContinue)) {
-                if ($PSCmdlet.ShouldProcess($FullDN, "Create Organizational Unit")) {
-                    New-ADOrganizationalUnit -Name $Name -Path $Path -ProtectedFromAccidentalDeletion $IsProtected
-                    Write-Host "Created: $Name" -ForegroundColor Green
-                }
-            } else {
-                Write-Verbose "Exists: $Name (Skipping)"
+        if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$Target'" -ErrorAction SilentlyContinue)) {
+            if ($PSCmdlet.ShouldProcess($Target)) {
+                New-ADOrganizationalUnit -Name $OU.Name -Path $Parent -ProtectedFromAccidentalDeletion $Prot
+                Write-Host " [+] Created: $($OU.Name)" -ForegroundColor Green
             }
         }
-
-        # 3. Create Root OU
-        New-OUHelper -Name $OrgName -Path $DomainDN -IsProtected $ProtectionValue
-
-        # 4. Load & Sort JSON Structure
-        if (-not (Test-Path $JsonPath)) { Write-Error "JSON not found."; return }
-
-        # We sort by the number of '/' in ParentOU to ensure parents are created before children
-        $OUDefinitions = Get-Content -Raw -Path $JsonPath | ConvertFrom-Json |
-                         Sort-Object { ($_.ParentOU -split '/').Count }
-
-        foreach ($OU in $OUDefinitions) {
-            $ParentPath = $RootPath
-            if (-not [string]::IsNullOrWhiteSpace($OU.ParentOU)) {
-                $PathParts = $OU.ParentOU -split '/'
-                [array]::Reverse($PathParts)
-                $FormattedParent = ($PathParts | ForEach-Object { "OU=$_" }) -join ","
-                $ParentPath = "$FormattedParent,$RootPath"
-            }
-
-            New-OUHelper -Name $OU.Name -Path $ParentPath -IsProtected $ProtectionValue
-        }
-
-        Write-Host "AD Structure for $OrgName completed." -ForegroundColor Cyan
     }
 }
-
 Export-ModuleMember -Function Restore-ADStructure

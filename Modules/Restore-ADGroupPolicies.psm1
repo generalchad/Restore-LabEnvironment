@@ -1,65 +1,46 @@
 function Restore-ADGroupPolicies {
     [CmdletBinding(SupportsShouldProcess=$true)]
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$OrgNameInput,
+    param([string]$OrgNameInput, [string]$JsonPath)
 
-        [string]$JsonPath = ".\ADGroupPolicies.json"
-    )
+    if (-not (Test-Path $JsonPath)) { return }
+    $RootPath = "OU=$OrgNameInput,$((Get-ADDomain).DistinguishedName)"
 
-    process {
-        if (-not (Test-Path $JsonPath)) { Write-Error "GPO JSON file not found."; return }
-        try { Import-Module GroupPolicy -ErrorAction Stop } catch { Write-Error "GroupPolicy module missing."; return }
+    Get-Content $JsonPath | ConvertFrom-Json | ForEach-Object {
+        $GReq = $_
+        $GPO = Get-GPO -Name $GReq.DisplayName -ErrorAction SilentlyContinue
 
-        $DomainDN = (Get-ADDomain).DistinguishedName
-        $OrgName = "_" + $OrgNameInput.Trim().TrimStart('_').ToUpper()
-        $RootPath = "OU=$OrgName,$DomainDN"
+        if (-not $GPO) {
+            if ($PSCmdlet.ShouldProcess($GReq.DisplayName, "Create GPO")) {
+                # FIXED: Standard If for comments
+                $GPOComment = "Automated Lab"
+                if ($GReq.Comment) { $GPOComment = $GReq.Comment }
 
-        $GPODefinitions = Get-Content -Raw -Path $JsonPath | ConvertFrom-Json
-
-        foreach ($GPOReq in $GPODefinitions) {
-            # 1. Create or Get the GPO
-            $ExistingGPO = Get-GPO -Name $GPOReq.DisplayName -ErrorAction SilentlyContinue
-            if (-not $ExistingGPO) {
-                if ($PSCmdlet.ShouldProcess($GPOReq.DisplayName, "Create new GPO")) {
-                    $GPO = New-GPO -Name $GPOReq.DisplayName -Comment $GPOReq.Comment
-                    Write-Host "Created GPO: $($GPOReq.DisplayName)" -ForegroundColor Green
-                }
-            } else { $GPO = $ExistingGPO }
-
-            # 2. Link the GPO (FIXED)
-            if ([string]::IsNullOrWhiteSpace($GPOReq.TargetOU)) {
-                $TargetLinkPath = $RootPath
-            } else {
-                $TargetLinkPath = "OU=$($GPOReq.TargetOU),$RootPath"
+                $GPO = New-GPO -Name $GReq.DisplayName -Comment $GPOComment
+                Write-Host " [+] GPO Created: $($GReq.DisplayName)" -ForegroundColor Green
             }
+        }
 
-            if ($GPO -and (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$TargetLinkPath'" -ErrorAction SilentlyContinue)) {
-                if ($PSCmdlet.ShouldProcess($TargetLinkPath, "Link GPO to Target")) {
-                    # XML Report check prevents Red-Text errors if link already exists
-                    $CurrentLinks = Get-GPOReport -Name $GPOReq.DisplayName -ReportType Xml | Select-Xml -XPath "//LinksTo"
-                    if ($CurrentLinks -notmatch [regex]::Escape($TargetLinkPath)) {
-                        New-GPLink -Name $GPOReq.DisplayName -Target $TargetLinkPath
-                        Write-Host "Linked $($GPOReq.DisplayName) to $TargetLinkPath" -ForegroundColor Cyan
-                    }
-                }
-            }
-
-            # 3. Apply Registry Settings
-            if ($GPO -and $GPOReq.Settings) {
-                foreach ($Setting in $GPOReq.Settings) {
-                    if ($PSCmdlet.ShouldProcess("$($Setting.ValueName)", "Apply Registry Setting")) {
-                        Set-GPRegistryValue -Name $GPOReq.DisplayName `
-                                            -Key $Setting.Key `
-                                            -ValueName $Setting.ValueName `
-                                            -Type $Setting.Type `
-                                            -Value $Setting.Value
-                    }
+        # Linking
+        $Target = Get-LabDN -SlashPath $GReq.TargetOU -RootDN $RootPath
+        if (Get-ADOrganizationalUnit -Identity $Target -ErrorAction SilentlyContinue) {
+            $Links = (Get-ADOrganizationalUnit -Identity $Target -Properties gPLink).gPLink
+            # Check if GPO GUID is already in the link attribute
+            if ($GPO -and ($Links -notmatch $GPO.Id.Guid)) {
+                if ($PSCmdlet.ShouldProcess($Target, "Link GPO $($GReq.DisplayName)")) {
+                    New-GPLink -Name $GReq.DisplayName -Target $Target | Out-Null
+                    Write-Host "  [>] Linked to: $Target" -ForegroundColor Cyan
                 }
             }
         }
-        Write-Host "GPO Restoration completed for $OrgName." -ForegroundColor Cyan
+
+        # Registry Preferences
+        if ($GPO -and $GReq.Settings) {
+            foreach ($S in $GReq.Settings) {
+                if ($PSCmdlet.ShouldProcess("$($S.Key)", "Set Registry Preference")) {
+                    Set-GPRegistryValue -Name $GReq.DisplayName -Key $S.Key -ValueName $S.ValueName -Type $S.Type -Value $S.Value | Out-Null
+                }
+            }
+        }
     }
 }
-
 Export-ModuleMember -Function Restore-ADGroupPolicies
