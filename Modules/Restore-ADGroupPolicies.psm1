@@ -11,7 +11,6 @@ function Restore-ADGroupPolicies {
 
         if (-not $GPO) {
             if ($PSCmdlet.ShouldProcess($GReq.DisplayName, "Create GPO")) {
-                # FIXED: Standard If for comments
                 $GPOComment = "Automated Lab"
                 if ($GReq.Comment) { $GPOComment = $GReq.Comment }
 
@@ -22,8 +21,12 @@ function Restore-ADGroupPolicies {
 
         # Linking
         $Target = Get-LabDN -SlashPath $GReq.TargetOU -RootDN $RootPath
-        if (Get-ADOrganizationalUnit -Identity $Target -ErrorAction SilentlyContinue) {
-            $Links = (Get-ADOrganizationalUnit -Identity $Target -Properties gPLink).gPLink
+
+        # FIXED: Changed -Identity to -Filter and retrieved gPLink safely
+        $TargetOU = Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$Target'" -Properties gPLink -ErrorAction SilentlyContinue
+
+        if ($TargetOU) {
+            $Links = $TargetOU.gPLink
             # Check if GPO GUID is already in the link attribute
             if ($GPO -and ($Links -notmatch $GPO.Id.Guid)) {
                 if ($PSCmdlet.ShouldProcess($Target, "Link GPO $($GReq.DisplayName)")) {

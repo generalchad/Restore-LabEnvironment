@@ -1,0 +1,21 @@
+[
+  {
+    "SamAccountName": "t0_tbrown",
+    "FirstName": "Timothy",
+    "LastName": "Brown",
+    "Type": "Admin",
+    "Tier": 0,
+    "OUPath": "OU=T0_Accounts,OU=Tier 0,OU=_Admin",
+    "Group": "GRP-SEC-ADMIN-Tier-0-Admins",
+    "GroupPath": "OU=T0_Groups,OU=Tier 0,OU=_Admin"
+  },
+  {
+    "SamAccountName": "stduser1",
+    "FirstName": "Standard",
+    "LastName": "User #1",
+    "Type": "Employees",
+    "OUPath": "OU=Technology,OU=Employees,OU=Users",
+    "Group": "Role-General-Employees",
+    "GroupPath": "OU=Roles,OU=Groups"
+  }
+]
