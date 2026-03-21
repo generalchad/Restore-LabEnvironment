@@ -6,8 +6,7 @@ function Restore-ADStructure {
     $RootPath = "OU=$OrgNameInput,$DomainDN"
     $Prot = -not $DisableProtection
 
-    # Ensure Root OU
-    if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$RootPath'" -ErrorAction SilentlyContinue)) {
+    if (-not (Get-ADOrganizationalUnit -Filter {DistinguishedName -eq $RootPath} -ErrorAction SilentlyContinue)) {
         if ($PSCmdlet.ShouldProcess($RootPath, "Create Root OU")) {
             New-ADOrganizationalUnit -Name $OrgNameInput -Path $DomainDN -ProtectedFromAccidentalDeletion $Prot
             Write-Host "[+] Created Root: $OrgNameInput" -ForegroundColor Green
@@ -15,14 +14,19 @@ function Restore-ADStructure {
     }
 
     if (-not (Test-Path $JsonPath)) { return }
-    # Sort by depth (number of slashes) to ensure parents are created before children
-    $OUs = Get-Content $JsonPath | ConvertFrom-Json | Sort-Object { ($_.ParentOU -split '/').Count }
+
+    $OUs = Get-Content $JsonPath | ConvertFrom-Json | Sort-Object {
+        if ([string]::IsNullOrWhiteSpace($_.ParentOU)) { 0 } else { ($_.ParentOU -split '/').Count }
+    }
 
     foreach ($OU in $OUs) {
         $Parent = Get-LabDN -SlashPath $OU.ParentOU -RootDN $RootPath
         $Target = "OU=$($OU.Name),$Parent"
 
-        if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$Target'" -ErrorAction SilentlyContinue)) {
+        $ouExists = $true
+        try { $null = Get-ADOrganizationalUnit -Identity $Target -ErrorAction Stop } catch { $ouExists = $false }
+
+        if (-not $ouExists) {
             if ($PSCmdlet.ShouldProcess($Target)) {
                 New-ADOrganizationalUnit -Name $OU.Name -Path $Parent -ProtectedFromAccidentalDeletion $Prot
                 Write-Host " [+] Created: $($OU.Name)" -ForegroundColor Green

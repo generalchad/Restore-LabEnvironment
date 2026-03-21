@@ -1,21 +1,24 @@
 [
   {
-    "SamAccountName": "t0_tbrown",
-    "FirstName": "Timothy",
-    "LastName": "Brown",
+    "SamAccountName": "tbrown_admin",
+    "GivenName": "Timothy",
+    "Surname": "Brown",
     "Type": "Admin",
     "Tier": 0,
-    "OUPath": "OU=T0_Accounts,OU=Tier 0,OU=_Admin",
-    "Group": "GRP-SEC-ADMIN-Tier-0-Admins",
-    "GroupPath": "OU=T0_Groups,OU=Tier 0,OU=_Admin"
+    "TargetOU": "_Admin/Tier 0/T0_Accounts",
+    "Title": "Domain Architect",
+    "Company": "BrownCorp Global",
+    "Office": "Secure Operations Center"
   },
   {
     "SamAccountName": "stduser1",
-    "FirstName": "Standard",
-    "LastName": "User #1",
+    "GivenName": "Standard",
+    "Surname": "User #1",
     "Type": "Employees",
-    "OUPath": "OU=Technology,OU=Employees,OU=Users",
-    "Group": "Role-General-Employees",
-    "GroupPath": "OU=Roles,OU=Groups"
+    "Department": "Technology",
+    "TargetOU": "Users/Employees/Technology",
+    "Description": "Primary test account for VDI session hosts.",
+    "Email": "stduser1@browncorp.local",
+    "Phone": "555-0123"
   }
 ]

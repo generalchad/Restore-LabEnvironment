@@ -5,44 +5,46 @@ function Restore-ADGroupPolicies {
     if (-not (Test-Path $JsonPath)) { return }
     $RootPath = "OU=$OrgNameInput,$((Get-ADDomain).DistinguishedName)"
 
-    Get-Content $JsonPath | ConvertFrom-Json | ForEach-Object {
-        $GReq = $_
-        $GPO = Get-GPO -Name $GReq.DisplayName -ErrorAction SilentlyContinue
+    # FIXED: -Raw and [array] casting prevents pipeline unrolling bugs
+    [array]$GPOData = Get-Content $JsonPath -Raw | ConvertFrom-Json
 
-        if (-not $GPO) {
-            if ($PSCmdlet.ShouldProcess($GReq.DisplayName, "Create GPO")) {
-                $GPOComment = "Automated Lab"
-                if ($GReq.Comment) { $GPOComment = $GReq.Comment }
+    foreach ($GReq in $GPOData) {
+        try {
+            $GPO = Get-GPO -Name $GReq.DisplayName -ErrorAction SilentlyContinue
 
-                $GPO = New-GPO -Name $GReq.DisplayName -Comment $GPOComment
-                Write-Host " [+] GPO Created: $($GReq.DisplayName)" -ForegroundColor Green
-            }
-        }
+            if (-not $GPO) {
+                if ($PSCmdlet.ShouldProcess($GReq.DisplayName, "Create GPO")) {
+                    $GPOComment = if ($GReq.Comment) { $GReq.Comment } else { "Automated Lab" }
 
-        # Linking
-        $Target = Get-LabDN -SlashPath $GReq.TargetOU -RootDN $RootPath
-
-        # FIXED: Changed -Identity to -Filter and retrieved gPLink safely
-        $TargetOU = Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$Target'" -Properties gPLink -ErrorAction SilentlyContinue
-
-        if ($TargetOU) {
-            $Links = $TargetOU.gPLink
-            # Check if GPO GUID is already in the link attribute
-            if ($GPO -and ($Links -notmatch $GPO.Id.Guid)) {
-                if ($PSCmdlet.ShouldProcess($Target, "Link GPO $($GReq.DisplayName)")) {
-                    New-GPLink -Name $GReq.DisplayName -Target $Target | Out-Null
-                    Write-Host "  [>] Linked to: $Target" -ForegroundColor Cyan
+                    $GPO = New-GPO -Name $GReq.DisplayName -Comment $GPOComment
+                    Write-Host " [+] GPO Created: $($GReq.DisplayName)" -ForegroundColor Green
                 }
             }
-        }
 
-        # Registry Preferences
-        if ($GPO -and $GReq.Settings) {
-            foreach ($S in $GReq.Settings) {
-                if ($PSCmdlet.ShouldProcess("$($S.Key)", "Set Registry Preference")) {
-                    Set-GPRegistryValue -Name $GReq.DisplayName -Key $S.Key -ValueName $S.ValueName -Type $S.Type -Value $S.Value | Out-Null
+            # Linking
+            $Target = Get-LabDN -SlashPath $GReq.TargetOU -RootDN $RootPath
+            $TargetOU = Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$Target'" -Properties gPLink -ErrorAction SilentlyContinue
+
+            if ($TargetOU) {
+                $Links = $TargetOU.gPLink
+                if ($GPO -and ($Links -notmatch $GPO.Id.Guid)) {
+                    if ($PSCmdlet.ShouldProcess($Target, "Link GPO $($GReq.DisplayName)")) {
+                        New-GPLink -Name $GReq.DisplayName -Target $Target | Out-Null
+                        Write-Host "  [>] Linked to: $Target" -ForegroundColor Cyan
+                    }
                 }
             }
+
+            # Registry Preferences
+            if ($GPO -and $GReq.Settings) {
+                foreach ($S in $GReq.Settings) {
+                    if ($PSCmdlet.ShouldProcess("$($S.Key)", "Set Registry Preference")) {
+                        Set-GPRegistryValue -Name $GReq.DisplayName -Key $S.Key -ValueName $S.ValueName -Type $S.Type -Value $S.Value | Out-Null
+                    }
+                }
+            }
+        } catch {
+            Write-Host " [X] Failed processing GPO '$($GReq.DisplayName)': $($_.Exception.Message)" -ForegroundColor Red
         }
     }
 }
