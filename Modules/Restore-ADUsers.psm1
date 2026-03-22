@@ -29,6 +29,8 @@ function Restore-ADUsers {
     Write-Host "`n--- Restoring AD Users with Extended Attributes ---" -ForegroundColor Cyan
 
     foreach ($U in $UserData) {
+        if ($U.Type -eq "Template") { continue }
+
         $SAM = $U.SamAccountName
         Write-Host " [i] Processing User: $SAM" -ForegroundColor White
 
@@ -75,7 +77,10 @@ function Restore-ADUsers {
             if (-not (Get-ADUser -Filter "SamAccountName -eq '$SAM'" -ErrorAction SilentlyContinue)) {
                 if ($PSCmdlet.ShouldProcess($SAM, "Create User")) {
                     New-ADUser @UserParams
-                    Write-Host "  [+] Created: $SAM" -ForegroundColor Green
+
+                    # --- UPDATED CONSOLE OUTPUT ---
+                    Write-Host "  [+] Created: $SAM in $($U.TargetOU)" -ForegroundColor Green
+
                     if ($OtherAttributes.Count -gt 0) {
                         Write-Host "      -> Extended Schema Attributes written: $($OtherAttributes.Keys -join ', ')" -ForegroundColor DarkGray
                     }

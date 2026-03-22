@@ -23,13 +23,16 @@ function Restore-ADStructure {
         $Parent = Get-LabDN -SlashPath $OU.ParentOU -RootDN $RootPath
         $Target = "OU=$($OU.Name),$Parent"
 
+        $Depth = if ([string]::IsNullOrWhiteSpace($OU.ParentOU)) { 0 } else { ($OU.ParentOU -split '/').Count }
+        $Indent = " " * (($Depth * 2) + 1)
+
         $ouExists = $true
         try { $null = Get-ADOrganizationalUnit -Identity $Target -ErrorAction Stop } catch { $ouExists = $false }
 
         if (-not $ouExists) {
             if ($PSCmdlet.ShouldProcess($Target)) {
                 New-ADOrganizationalUnit -Name $OU.Name -Path $Parent -ProtectedFromAccidentalDeletion $Prot
-                Write-Host " [+] Created: $($OU.Name)" -ForegroundColor Green
+                Write-Host "$Indent[+] Created: $($OU.Name)" -ForegroundColor Green
             }
         }
     }

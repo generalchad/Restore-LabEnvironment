@@ -1,5 +1,35 @@
 [
   {
+    "SamAccountName": "TEMPLATE_USER_DO_NOT_DELETE",
+    "Type": "Template",
+    "NOTES": "This entry is a reference for all supported fields. The script will skip it.",
+    "GivenName": "First Name",
+    "Surname": "Last Name",
+    "DisplayName": "Full Name",
+    "Description": "General Description",
+    "Title": "Job Title",
+    "Department": "Department Name",
+    "Company": "Company Name",
+    "Office": "Office Location",
+    "Email": "email@domain.com",
+    "Phone": "Work Phone",
+    "Mobile": "Cell Phone",
+    "Street": "123 Street Address",
+    "City": "City Name",
+    "State": "State/Province",
+    "Zip": "Postal Code",
+    "Country": "Country Code (US, UK, etc)",
+    "HomeDirectory": "\\\\Server\\Share\\User",
+    "HomeDrive": "H:",
+    "ProfilePath": "\\\\Server\\Profiles\\User",
+    "EmployeeID": "12345",
+    "EmployeeNumber": "67890",
+    "TargetOU": "Users/Employees",
+    "Groups": [
+      { "Name": "Group_Name", "TargetOU": "Groups/Path" }
+    ]
+  },
+  {
     "SamAccountName": "tbrown_admin",
     "GivenName": "Timothy",
     "Surname": "Brown",
