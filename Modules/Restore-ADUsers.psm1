@@ -7,7 +7,7 @@ function Restore-ADUsers {
 
     $Domain = Get-ADDomain
     $RootDN = "OU=$OrgNameInput,$($Domain.DistinguishedName)"
-    $Pass = ConvertTo-SecureString "Welcome1!" -AsPlainText -Force
+    $Pass = ConvertTo-SecureString "Welcome1" -AsPlainText -Force
     [array]$UserData = Get-Content $JsonPath -Raw | ConvertFrom-Json
 
     # 1. System Logic (Skip these entirely)
