@@ -28,7 +28,8 @@ If you must execute this framework against earlier Active Directory Domain Servi
 
 1. **Install WMF 5.1:** Update the management host to Windows Management Framework 5.1. The default PowerShell versions (2.0 and 4.0) included with these operating systems lack the `ConvertFrom-Json` capabilities and advanced splatting required by the orchestrator.
 2. **Active Directory Web Services (ADWS):** For Windows Server 2008, you must manually install the "Active Directory Management Gateway Service" to allow the PowerShell AD module to communicate with the legacy database. Expect slower query execution times.
-3. **GPO Compatibility Warning:** Older Group Policy Management Consoles lack the modern ADMX templates required to parse contemporary registry preferences (e.g., Windows 10/11 settings). Additionally, environments unpatched against MS16-072 may fail to apply GPOs correctly when utilizing the `RemoveAuthUsersApply` parameter in `ADGroupPolicies.json`.
+
+**GPO Compatibility Warning:** Older Group Policy Management Consoles lack the modern ADMX templates required to parse contemporary registry preferences (e.g., Windows 10/11 settings). Additionally, environments unpatched against MS16-072 may fail to apply GPOs correctly when utilizing the `RemoveAuthUsersApply` parameter in `ADGroupPolicies.json`.
 
 ## Repository Structure
 
