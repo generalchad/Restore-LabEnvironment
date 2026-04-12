@@ -7,9 +7,10 @@ The Active Directory Lab Automation Framework is a modular, JSON-driven PowerShe
 ## Features
 
 * **JSON-Driven Configuration:** All structural and object data is decoupled from the execution logic, allowing environments to be version-controlled and modified without altering the underlying PowerShell modules.
+* **Desired State Synchronization:** The group membership engine compares current Active Directory state against the JSON configuration, aggressively pruning unauthorized drift while provisioning missing access.
 * **Idempotent Execution:** The framework safely checks for the existence of objects before creation, preventing duplication errors and allowing the script to be run multiple times safely.
 * **Cascading Error Handling:** Utilizes strict variable enforcement and terminating errors within isolated modules to prevent partial or corrupted deployments.
-* **Persistent Transcript Logging:** Every execution automatically generates a timestamped log file detailing success states, warnings, and handled exceptions.
+* **Persistent Transcript Logging:** Every execution automatically generates a timestamped log file detailing success states, warnings, and handled exceptions without console spam.
 * **Dynamic Path Translation:** Converts intuitive slash-based paths (e.g., `Servers/Infrastructure`) into proper Active Directory Distinguished Names dynamically.
 
 ## Prerequisites
@@ -29,9 +30,10 @@ Ensure the repository is structured exactly as follows before execution:
 Restore-AD/
 ├── Restore-LabEnvironment.ps1
 ├── Config/
+│   ├── ADBaselines.json
+│   ├── ADGroupPolicies.json
 │   ├── ADStructure.json
 │   ├── ADUserData.json
-│   ├── ADGroupPolicies.json
 │   └── ADWmiFilters.json
 ├── Logs/
 │   └── (Log files will auto-generate here)
@@ -49,9 +51,10 @@ Restore-AD/
 Before executing the deployment, customize the environment by editing the files within the `Config\` directory.
 
 * **ADStructure.json:** Defines the Organizational Unit (OU) hierarchy. Use `ParentOU` to nest OUs. Leave `ParentOU` blank to place the OU at the deployment root.
-* **ADUserData.json:** Defines user objects and their attributes. Map users to specific OUs, define their administrative tier, and assign them to roles. Non-standard attributes will be written directly to the AD object.
+* **ADBaselines.json:** Defines global Security and Distribution groups. Every managed user provisioned by the framework is automatically synchronized to these groups.
+* **ADUserData.json:** Defines user objects and their attributes. Map users to specific OUs, define their administrative tier, and assign them to explicit native or custom roles.
 * **ADGroupPolicies.json:** Defines security baselines and registry preferences. Assigns policies to target OUs and supports Security Filtering via MS16-072 compliant permission mapping.
-* **ADWmiFilters.json:** Defines reusable WMI filters (Name, Description, Query) that are created in AD and can be linked to GPOs.
+* **ADWmiFilters.json:** Defines reusable WMI filters (Name, Description, Query) that are created natively in AD and can be linked to GPOs.
 
 ### OU Structure Configuration
 
@@ -64,20 +67,28 @@ Each OU object in `ADStructure.json` uses the following schema:
 }
 ```
 
-Guidance:
+**Guidance:**
 
 * `Name` is the OU name to create.
 * `ParentOU` is a slash-delimited relative path from the org root OU.
 * Use an empty `ParentOU` (`""`) to create a top-level OU under the org root.
 
-Example top-level OU:
+### Baseline Group Configuration
+
+Each baseline group object in `ADBaselines.json` uses the following schema:
 
 ```json
 {
-    "Name": "Workstations",
-    "ParentOU": ""
+    "Name": "GRP-SEC-EVERYONE-GLOBAL",
+    "Category": "Security",
+    "Path": "Groups/Security"
 }
 ```
+
+**Guidance:**
+
+* `Category` must be either "Security" or "Distribution".
+* All users defined in `ADUserData.json` will be synchronized to these groups automatically.
 
 ### User Data Configuration
 
@@ -95,23 +106,22 @@ Minimum practical schema:
 }
 ```
 
-Optional fields include `Type`, `Tier`, `Description`, `Title`, `Department`, `Company`, contact attributes, address attributes, home/profile paths, and employee identifiers.
+Optional fields include `Type`, `Tier`, `Description`, `Title`, `Department`, `Company`, contact attributes, address attributes, home/profile paths, and employee identifiers. Non-standard attributes will be mapped directly to the Active Directory object's extended properties.
 
-To define group assignments, use `Groups` as an array:
+To define explicit group assignments (including built-in groups like Domain Admins), use `Groups` as an array:
 
 ```json
 {
     "SamAccountName": "jdoe",
     "TargetOU": "Users/Employees",
     "Groups": [
+        { "Name": "Domain Admins", "TargetOU": "Users" },
         { "Name": "GRP-SEC-CustomRole", "TargetOU": "Groups/Security" }
     ]
 }
 ```
 
-Template behavior:
-
-* The built-in `TEMPLATE_USER_DO_NOT_DELETE` record is intentionally skipped by the restore process and serves as a field reference.
+**Template behavior:** The built-in `TEMPLATE_USER_DO_NOT_DELETE` record is intentionally skipped by the restore process and serves as a field reference.
 
 ### Group Policy Configuration
 
@@ -137,14 +147,14 @@ Each GPO object in `ADGroupPolicies.json` uses this schema pattern:
 }
 ```
 
-Guidance:
+**Guidance:**
 
 * `DisplayName` is required and must be unique in the domain.
 * `TargetOU` can be empty (`""`) to link at the org root OU.
 * `Enforced` controls link enforcement for the target OU.
 * `WmiFilterName` must match a filter `Name` from `ADWmiFilters.json`.
 * `Settings` defines Registry Preference entries applied to the GPO.
-* `SecurityFilters` and `RemoveAuthUsersApply` are optional and control GPO security filtering.
+* `SecurityFilters` and `RemoveAuthUsersApply` are optional and control GPO security filtering (MS16-072 compliant).
 
 ### WMI Filter Configuration
 
@@ -159,14 +169,6 @@ Each WMI filter object in `ADWmiFilters.json` uses the following schema:
 ```
 
 To bind a filter to a GPO, set `WmiFilterName` in `ADGroupPolicies.json` to a matching filter `Name`.
-
-```json
-{
-    "DisplayName": "GPO-SEC-SRV-Baseline",
-    "TargetOU": "Servers",
-    "WmiFilterName": "WMI-Filter-ServerOS"
-}
-```
 
 ## Deployment Walkthrough
 
@@ -190,10 +192,10 @@ cd C:\Path\To\Restore-AD
 
 ### Step 3: Execute the Orchestrator
 
-Execute `Restore-LabEnvironment.ps1`. You must provide the `-OrgName` parameter, which establishes the root OU for the deployment (e.g., passing `EzCorp` will create and target `OU=_EZCORP,DC=domain,DC=com`).
+Execute `Restore-LabEnvironment.ps1`. You must provide the `-OrgName` parameter, which establishes the root OU for the deployment.
 
 ```powershell
-.\Restore-LabEnvironment.ps1 -OrgName "EzCorp"
+.\Restore-LabEnvironment.ps1 -OrgName "BrownCorp"
 ```
 
 **Optional Parameters:**
