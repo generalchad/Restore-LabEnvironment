@@ -30,6 +30,13 @@ function Write-LabLog {
     $Colors = @{ INFO = "Cyan"; OK = "Green"; SKIP = "Yellow"; FAIL = "Red"; HEAD = "Magenta" }
     $Markers = @{ INFO = "[i]"; OK = "[+]"; SKIP = "[!]"; FAIL = "[X]"; HEAD = "---" }
 
+    # If the message starts with a newline, print a blank line and strip the character
+    if ($Message.StartsWith("`n")) {
+        Write-Host ""
+        Write-Information ""
+        $Message = $Message.Substring(1)
+    }
+
     Write-Host "$($Markers[$Type]) $Message" -ForegroundColor $Colors[$Type]
     Write-Information "$($Markers[$Type]) $Message"
 }
@@ -83,7 +90,7 @@ $WmiParams       = @{ JsonPath = $WmiFilterJson; ErrorAction = 'Stop' }
 try {
     Start-Transcript -Path $LogPath -Append -Force | Out-Null
 
-    Write-LabLog "Step 1: Restoring AD OU Structure..." "INFO"
+    Write-LabLog "`nStep 1: Restoring AD OU Structure..." "INFO"
     Restore-ADStructure @StructureParams
 
     Write-LabLog "`nStep 2: Restoring AD Users..." "INFO"
