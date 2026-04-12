@@ -1,3 +1,5 @@
+#Requires -Modules ActiveDirectory
+
 function Restore-ADStructure {
     [CmdletBinding(SupportsShouldProcess=$true)]
     param([string]$OrgNameInput, [string]$JsonPath, [switch]$DisableProtection)
@@ -6,10 +8,13 @@ function Restore-ADStructure {
     $RootPath = "OU=$OrgNameInput,$DomainDN"
     $Prot = -not $DisableProtection
 
-    if (-not (Get-ADOrganizationalUnit -Filter {DistinguishedName -eq $RootPath} -ErrorAction SilentlyContinue)) {
+    # FIXED: Use Filter instead of Identity to prevent Transcript error spam
+    $rootExists = [bool](Get-ADObject -Filter "DistinguishedName -eq '$RootPath'")
+
+    if (-not $rootExists) {
         if ($PSCmdlet.ShouldProcess($RootPath, "Create Root OU")) {
             New-ADOrganizationalUnit -Name $OrgNameInput -Path $DomainDN -ProtectedFromAccidentalDeletion $Prot
-            Write-Host "[+] Created Root: $OrgNameInput" -ForegroundColor Green
+            Write-Host "  [+] Created Root: $OrgNameInput" -ForegroundColor Green
         }
     }
 
@@ -24,10 +29,10 @@ function Restore-ADStructure {
         $Target = "OU=$($OU.Name),$Parent"
 
         $Depth = if ([string]::IsNullOrWhiteSpace($OU.ParentOU)) { 0 } else { ($OU.ParentOU -split '/').Count }
-        $Indent = " " * (($Depth * 2) + 1)
+        $Indent = "  " * (($Depth * 2) + 1)
 
-        $ouExists = $true
-        try { $null = Get-ADOrganizationalUnit -Identity $Target -ErrorAction Stop } catch { $ouExists = $false }
+        # FIXED: Use Filter instead of Identity to prevent Transcript error spam
+        $ouExists = [bool](Get-ADObject -Filter "DistinguishedName -eq '$Target'")
 
         if (-not $ouExists) {
             if ($PSCmdlet.ShouldProcess($Target)) {

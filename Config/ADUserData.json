@@ -26,7 +26,7 @@
     "EmployeeNumber": "67890",
     "TargetOU": "Users/Employees",
     "Groups": [
-      { "Name": "Group_Name", "TargetOU": "Groups/Path" }
+      { "Name": "GRP-SEC-CustomRole", "TargetOU": "Groups/Security" }
     ]
   },
   {

@@ -75,11 +75,12 @@ try {
     Write-LabLog "Step 2: Restoring AD Users..." "INFO"
     Restore-ADUsers @UserParams
 
-    Write-LabLog "Step 3: Restoring Group Policies..." "INFO"
-    Restore-ADGroupPolicies @GpoParams
-
-    Write-LabLog "Step 4: Restoring Group Memberships..." "INFO"
+    # FIXED: Swapped Step 3 and Step 4 so Groups exist before GPOs need them
+    Write-LabLog "Step 3: Restoring Group Memberships..." "INFO"
     Restore-ADGroupMemberships @MemberParams
+
+    Write-LabLog "Step 4: Restoring Group Policies..." "INFO"
+    Restore-ADGroupPolicies @GpoParams
 
     Write-LabLog "Restoration Complete. Log saved to $LogPath" "HEAD"
 }

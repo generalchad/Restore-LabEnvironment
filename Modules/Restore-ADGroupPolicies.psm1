@@ -1,5 +1,12 @@
 #Requires -Modules ActiveDirectory, GroupPolicy
 
+<#
+.SYNOPSIS
+    Parses a JSON configuration file to provision, configure, and link Group Policy Objects.
+.DESCRIPTION
+    Automates the generation of GPOs, assigns Registry Preferences, configures MS16-072 compliant
+    Security Filtering via Set-GPPermission, and manages WMI filter linking by modifying AD attributes natively.
+#>
 function Restore-ADGroupPolicies {
     [CmdletBinding(SupportsShouldProcess=$true)]
     param(
@@ -13,7 +20,7 @@ function Restore-ADGroupPolicies {
 
     $Domain = Get-ADDomain
     $DomainDN = $Domain.DistinguishedName
-    $DomainName = $Domain.Forest
+    $DomainName = $Domain.DNSRoot
     $RootPath = "OU=$OrgNameInput,$DomainDN"
 
     [array]$GPOData = Get-Content -Path $JsonPath -Raw | ConvertFrom-Json
@@ -52,12 +59,11 @@ function Restore-ADGroupPolicies {
 
                     if ($Links -notmatch $GPO.Id.Guid) {
                         if ($PSCmdlet.ShouldProcess($Target, "Link GPO $($GReq.DisplayName)")) {
-                            New-GPLink -Name $GReq.DisplayName -Target $Target -Enforcement $Enforced -ErrorAction Stop | Out-Null
+                            New-GPLink -Name $GReq.DisplayName -Target $Target -Enforced $Enforced -ErrorAction Stop | Out-Null
                             Write-Host "  [>] Linked to: $Target (Enforced: $Enforced)" -ForegroundColor Cyan
                         }
                     } else {
-                        # Ensure enforcement state is correct even if already linked
-                        Set-GPLink -Name $GReq.DisplayName -Target $Target -Enforcement $Enforced -ErrorAction SilentlyContinue | Out-Null
+                        Set-GPLink -Name $GReq.DisplayName -Target $Target -Enforced $Enforced -ErrorAction SilentlyContinue | Out-Null
                         Write-Host "  [-] Already linked to target (Enforced: $Enforced)" -ForegroundColor DarkGray
                     }
                 } else {
@@ -84,7 +90,6 @@ function Restore-ADGroupPolicies {
         if ($GPO -and $GReq.SecurityFilters) {
             try {
                 if ($GReq.RemoveAuthUsersApply) {
-                    # MS16-072 dictates Authenticated Users MUST have 'Read' to evaluate the GPO, even if they don't apply it.
                     Set-GPPermission -Name $GReq.DisplayName -PermissionLevel GpoRead -TargetName "Authenticated Users" -TargetType Group -ErrorAction Stop | Out-Null
                     Write-Host "  [+] Authenticated Users restricted to 'Read' only" -ForegroundColor Green
                 }
@@ -103,20 +108,17 @@ function Restore-ADGroupPolicies {
         if ($GPO -and $GReq.WmiFilterName) {
             try {
                 if ($PSCmdlet.ShouldProcess($GReq.WmiFilterName, "Link WMI Filter")) {
-                    # Native PowerShell lacks a WMI Link cmdlet. We must use the GPMgmt COM Object.
-                    $GPM = New-Object -ComObject GPMgmt.GPM
-                    $Constants = $GPM.GetConstants()
-                    $GPMDomain = $GPM.GetDomain($DomainName, "", $Constants.UseAnyDC)
+                    $WmiBase = "CN=SOM,CN=WMIPolicy,CN=System,$DomainDN"
 
-                    # Search for the specified WMI Filter
-                    $Search = $GPM.CreateSearchCriteria()
-                    $Search.Add($Constants.SearchPropertyWMIFilterName, $Constants.SearchOpEquals, $GReq.WmiFilterName)
-                    $WMIFilters = $GPMDomain.SearchWMIFilters($Search)
+                    $WmiObj = Get-ADObject -Filter "msWMI-Name -eq '$($GReq.WmiFilterName)'" -SearchBase $WmiBase -ErrorAction SilentlyContinue
 
-                    if ($WMIFilters.Count -gt 0) {
-                        $TargetFilter = $WMIFilters.Item(1)
-                        $GPM_GPO = $GPMDomain.GetGPO($GPO.Id.Guid)
-                        $GPM_GPO.SetWMIFilter($TargetFilter)
+                    if ($WmiObj) {
+                        $GpoADPath = "CN={$($GPO.Id.ToString())},CN=Policies,CN=System,$DomainDN"
+
+                        $FilterLinkStr = "[$DomainName;$($WmiObj.Name);0]"
+
+                        Set-ADObject -Identity $GpoADPath -Replace @{gPCWQLFilter = $FilterLinkStr} -ErrorAction Stop
+
                         Write-Host "  [+] WMI Filter Linked: $($GReq.WmiFilterName)" -ForegroundColor Green
                     } else {
                         Write-Host "  [X] WMI Filter not found in domain: $($GReq.WmiFilterName)" -ForegroundColor Yellow

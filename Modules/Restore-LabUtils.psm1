@@ -26,19 +26,13 @@ function Assert-OUPath {
 
     $Parts = $SlashPath.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries) | ForEach-Object { $_.Trim() }
 
-    # Track the running ParentDN as we build down the tree
     $CurrentParentDN = $RootDN
 
     foreach ($P in $Parts) {
         $TargetDN = "OU=$P,$CurrentParentDN"
-        $ouExists = $true
 
-        try {
-            # Get-ADObject is generally faster than Get-ADOrganizationalUnit for existence checks
-            $null = Get-ADObject -Identity $TargetDN -ErrorAction Stop
-        } catch {
-            $ouExists = $false
-        }
+        # FIXED: Use Filter instead of Identity to prevent Transcript error spam
+        $ouExists = [bool](Get-ADObject -Filter "DistinguishedName -eq '$TargetDN'")
 
         if (-not $ouExists) {
             try {
@@ -46,11 +40,10 @@ function Assert-OUPath {
                 Write-Host "  [+] Auto-Created Missing OU: $P" -ForegroundColor Yellow
             } catch {
                 Write-Host "  [X] Failed to create OU '$P': $($_.Exception.Message)" -ForegroundColor Red
-                throw $_ # Rethrow to stop downstream creation if parent fails
+                throw $_
             }
         }
 
-        # The target we just checked/created becomes the parent for the next loop iteration
         $CurrentParentDN = $TargetDN
     }
 }

@@ -20,7 +20,7 @@
   {
     "DisplayName": "GPO-SEC-WKS-Baseline",
     "TargetOU": "Workstations",
-    "Comment": "General workstation security. WMI filtered to ensure it ONLY applies to Client OSs, preventing accidental application if a Server is moved here.",
+    "Comment": "General workstation security. WMI filtered to ensure it ONLY applies to Client OSs.",
     "WmiFilterName": "WMI-Filter-ClientOS",
     "Settings": [
       { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\Control Panel\\Desktop", "ValueName": "ScreenSaveTimeOut", "Type": "String", "Value": "900" },
@@ -53,7 +53,7 @@
     "RemoveAuthUsersApply": true,
     "SecurityFilters": [
         "Domain Computers",
-        "Standard Lab Users"
+        "GRP-SEC-EVERYONE-GLOBAL"
     ],
     "Settings": [
       { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\System", "ValueName": "DisableCMD", "Type": "DWord", "Value": 1 },
