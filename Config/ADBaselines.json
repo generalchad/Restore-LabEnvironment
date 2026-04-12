@@ -1,0 +1,12 @@
+[
+  {
+    "Name": "GRP-SEC-EVERYONE-GLOBAL",
+    "Category": "Security",
+    "Path": "Groups/Security"
+  },
+  {
+    "Name": "GRP-DISTRO-ALL-STAFF",
+    "Category": "Distribution",
+    "Path": "Groups/Distribution"
+  }
+]

@@ -3,8 +3,7 @@
     Master orchestration script for Automated Active Directory Lab Restoration.
 .DESCRIPTION
     Validates administrative privileges and required RSAT modules before sequentially executing
-    infrastructure-as-code deployments for OUs, Users, Group Memberships, and Group Policies.
-    Generates a persistent transcript log for every execution.
+    infrastructure-as-code deployments for OUs, Users, Group Memberships, WMI Filters, and Group Policies.
 .PARAMETER OrgName
     The base name of the root organization (e.g., "BrownCorp").
 .PARAMETER DisableProtection
@@ -20,7 +19,8 @@ param(
     [string]$StructureJson = "$PSScriptRoot\Config\ADStructure.json",
     [string]$UserDataJson  = "$PSScriptRoot\Config\ADUserData.json",
     [string]$GpoJson       = "$PSScriptRoot\Config\ADGroupPolicies.json",
-    [string]$WmiFilterJson = "$PSScriptRoot\Config\ADWmiFilters.json"
+    [string]$WmiFilterJson = "$PSScriptRoot\Config\ADWmiFilters.json",
+    [string]$BaselineJson  = "$PSScriptRoot\Config\ADBaselines.json"
 )
 
 Set-StrictMode -Version Latest
@@ -30,7 +30,6 @@ function Write-LabLog {
     $Colors = @{ INFO = "Cyan"; OK = "Green"; SKIP = "Yellow"; FAIL = "Red"; HEAD = "Magenta" }
     $Markers = @{ INFO = "[i]"; OK = "[+]"; SKIP = "[!]"; FAIL = "[X]"; HEAD = "---" }
 
-    # If the message starts with a newline, print a blank line and strip the character
     if ($Message.StartsWith("`n")) {
         Write-Host ""
         Write-Information ""
@@ -57,7 +56,7 @@ try {
     Write-LabLog "Loading Lab Modules..." "INFO"
     Import-Module ActiveDirectory, GroupPolicy -ErrorAction Stop
 
-    $CustomModules = @("Restore-LabUtils", "Restore-ADStructure", "Restore-ADUsers", "Restore-ADGroupPolicies", "Restore-ADGroupMemberships", "Restore-ADWmiFilters")
+    $CustomModules = @("Restore-LabUtils", "Restore-ADStructure", "Restore-ADUsers", "Restore-ADGroupMemberships", "Restore-ADWmiFilters", "Restore-ADGroupPolicies")
     foreach ($M in $CustomModules) {
         $P = Join-Path $PSScriptRoot "Modules\$M.psm1"
         if (Test-Path $P) {
@@ -83,14 +82,14 @@ Write-LabLog "Starting Lab Restoration for $CleanOrg" "HEAD"
 
 $StructureParams = @{ OrgNameInput = $CleanOrg; DisableProtection = $DisableProtection; JsonPath = $StructureJson; ErrorAction = 'Stop' }
 $UserParams      = @{ OrgNameInput = $CleanOrg; JsonPath = $UserDataJson; ErrorAction = 'Stop' }
-$GpoParams       = @{ OrgNameInput = $CleanOrg; JsonPath = $GpoJson; ErrorAction = 'Stop' }
-$MemberParams    = @{ OrgNameInput = $CleanOrg; JsonPath = $UserDataJson; ErrorAction = 'Stop' }
+$MemberParams    = @{ OrgNameInput = $CleanOrg; JsonPath = $UserDataJson; BaselineJson = $BaselineJson; ErrorAction = 'Stop' }
 $WmiParams       = @{ JsonPath = $WmiFilterJson; ErrorAction = 'Stop' }
+$GpoParams       = @{ OrgNameInput = $CleanOrg; JsonPath = $GpoJson; ErrorAction = 'Stop' }
 
 try {
     Start-Transcript -Path $LogPath -Append -Force | Out-Null
 
-    Write-LabLog "`nStep 1: Restoring AD OU Structure..." "INFO"
+    Write-LabLog "Step 1: Restoring AD OU Structure..." "INFO"
     Restore-ADStructure @StructureParams
 
     Write-LabLog "`nStep 2: Restoring AD Users..." "INFO"
