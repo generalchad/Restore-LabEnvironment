@@ -17,10 +17,19 @@ The Active Directory Lab Automation Framework is a modular, JSON-driven PowerShe
 
 To execute this framework, the host system must meet the following requirements:
 
-1. **Operating System:** Windows Server 2016+ or Windows 10/11 (with RSAT installed).
+1. **Operating System:** Windows Server 2016+ or Windows 10/11 (with RSAT installed) is highly recommended.
 2. **PowerShell:** Version 5.1 or later.
 3. **Dependencies:** The `ActiveDirectory` and `GroupPolicy` PowerShell modules must be available.
 4. **Permissions:** The execution context must be elevated (Run as Administrator) and the executing user must hold Domain Admin privileges within the target Active Directory forest.
+
+### Legacy Environment Configuration (Windows Server 2008 R2 / 2012 R2)
+
+If you must execute this framework against earlier Active Directory Domain Services (ADDS) environments, you must fulfill the following manual prerequisites prior to execution:
+
+1. **Install WMF 5.1:** Update the management host to Windows Management Framework 5.1. The default PowerShell versions (2.0 and 4.0) included with these operating systems lack the `ConvertFrom-Json` capabilities and advanced splatting required by the orchestrator.
+2. **Active Directory Web Services (ADWS):** For Windows Server 2008, you must manually install the "Active Directory Management Gateway Service" to allow the PowerShell AD module to communicate with the legacy database. Expect slower query execution times.
+3. **TLS 1.2 Enforcement:** On Windows Server 2012/2012 R2, force TLS 1.2 via registry changes or script configuration if you plan to integrate this framework with secure remote repositories or web calls.
+4. **GPO Compatibility Warning:** Older Group Policy Management Consoles lack the modern ADMX templates required to parse contemporary registry preferences (e.g., Windows 10/11 settings). Additionally, environments unpatched against MS16-072 may fail to apply GPOs correctly when utilizing the `RemoveAuthUsersApply` parameter in `ADGroupPolicies.json`.
 
 ## Repository Structure
 
