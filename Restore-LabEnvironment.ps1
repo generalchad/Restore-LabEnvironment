@@ -86,19 +86,19 @@ try {
     Write-LabLog "Step 1: Restoring AD OU Structure..." "INFO"
     Restore-ADStructure @StructureParams
 
-    Write-LabLog "Step 2: Restoring AD Users..." "INFO"
+    Write-LabLog "`nStep 2: Restoring AD Users..." "INFO"
     Restore-ADUsers @UserParams
 
-    Write-LabLog "Step 3: Restoring Group Memberships..." "INFO"
+    Write-LabLog "`nStep 3: Restoring Group Memberships..." "INFO"
     Restore-ADGroupMemberships @MemberParams
 
-    Write-LabLog "Step 4: Restoring WMI Filters..." "INFO"
+    Write-LabLog "`nStep 4: Restoring WMI Filters..." "INFO"
     Restore-ADWmiFilters @WmiParams
 
-    Write-LabLog "Step 5: Restoring Group Policies..." "INFO"
+    Write-LabLog "`nStep 5: Restoring Group Policies..." "INFO"
     Restore-ADGroupPolicies @GpoParams
 
-    Write-LabLog "Restoration Complete. Log saved to $LogPath" "HEAD"
+    Write-LabLog "`nRestoration Complete. Log saved to $LogPath" "HEAD"
 }
 catch {
     Write-LabLog "Critical Failure during restoration: $($_.Exception.Message)" "FAIL"
