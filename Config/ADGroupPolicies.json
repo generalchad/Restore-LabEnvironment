@@ -2,7 +2,8 @@
   {
     "DisplayName": "GPO-SEC-GLOBAL-Hardening",
     "TargetOU": "",
-    "Comment": "Root-level security baseline for the entire organization.",
+    "Comment": "Root-level security baseline. Enforced to prevent downstream OUs from overriding.",
+    "Enforced": true,
     "Settings": [
       { "Key": "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", "ValueName": "DisplayLastLogonInfo", "Type": "DWord", "Value": 1 }
     ]
@@ -10,7 +11,8 @@
   {
     "DisplayName": "GPO-SEC-GLOBAL-PSLogging",
     "TargetOU": "",
-    "Comment": "Enable PowerShell Script Block Logging for incident response and threat hunting.",
+    "Comment": "Enable PowerShell Script Block Logging. Enforced globally for incident response.",
+    "Enforced": true,
     "Settings": [
       { "Key": "HKLM\\Software\\Policies\\Microsoft\\Windows\\PowerShell\\ScriptBlockLogging", "ValueName": "EnableScriptBlockLogging", "Type": "DWord", "Value": 1 }
     ]
@@ -18,7 +20,8 @@
   {
     "DisplayName": "GPO-SEC-WKS-Baseline",
     "TargetOU": "Workstations",
-    "Comment": "General workstation security: Screensaver and session locking.",
+    "Comment": "General workstation security. WMI filtered to ensure it ONLY applies to Client OSs, preventing accidental application if a Server is moved here.",
+    "WmiFilterName": "WMI-Filter-ClientOS",
     "Settings": [
       { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\Control Panel\\Desktop", "ValueName": "ScreenSaveTimeOut", "Type": "String", "Value": "900" },
       { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\Control Panel\\Desktop", "ValueName": "ScreenSaverIsSecure", "Type": "String", "Value": "1" }
@@ -36,7 +39,8 @@
   {
     "DisplayName": "GPO-SEC-SRV-Baseline",
     "TargetOU": "Servers",
-    "Comment": "Server specific hardening: Require NLA for RDP and secure RPC.",
+    "Comment": "Server specific hardening. WMI filtered to ensure it ONLY applies to Server OSs.",
+    "WmiFilterName": "WMI-Filter-ServerOS",
     "Settings": [
       { "Key": "HKLM\\Software\\Policies\\Microsoft\\Windows NT\\Terminal Services", "ValueName": "UserAuthentication", "Type": "DWord", "Value": 1 },
       { "Key": "HKLM\\Software\\Policies\\Microsoft\\Windows NT\\Rpc", "ValueName": "RestrictRemoteClients", "Type": "DWord", "Value": 1 }
@@ -45,7 +49,12 @@
   {
     "DisplayName": "GPO-SEC-STG-Quarantine",
     "TargetOU": "_Staging",
-    "Comment": "Lockdown policy for new and quarantined devices.",
+    "Comment": "Lockdown policy. Removes standard Auth Users apply rights so Admins can still use CMD/Control Panel when fixing a quarantined box.",
+    "RemoveAuthUsersApply": true,
+    "SecurityFilters": [
+        "Domain Computers",
+        "Standard Lab Users"
+    ],
     "Settings": [
       { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\System", "ValueName": "DisableCMD", "Type": "DWord", "Value": 1 },
       { "Key": "HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer", "ValueName": "NoControlPanel", "Type": "DWord", "Value": 1 }
