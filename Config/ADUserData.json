@@ -30,25 +30,39 @@
     ]
   },
   {
-    "SamAccountName": "tbrown_admin",
-    "GivenName": "Timothy",
-    "Surname": "Brown",
+    "SamAccountName": "t0_admin",
+    "GivenName": "Tier 0",
+    "Surname": "Admin",
+    "DisplayName": "Tier 0 Admin",
     "Type": "Admin",
     "Tier": 0,
     "TargetOU": "_Admin/Tier 0/T0_Accounts",
     "Title": "Domain Architect",
-    "Company": "BrownCorp Global",
+    "Company": "EZCorp Global",
     "Office": "Secure Operations Center"
   },
   {
-    "SamAccountName": "stduser1",
-    "GivenName": "Standard",
-    "Surname": "User #1",
+    "SamAccountName": "HawkUser23",
+    "GivenName": "Hawk",
+    "Surname": "User #23",
+    "DisplayName": "Hawk User #23",
     "Type": "Employees",
     "Department": "Technology",
     "TargetOU": "Users/Employees/Technology",
     "Description": "Primary test account for VDI session hosts.",
-    "Email": "stduser1@browncorp.local",
+    "Email": "stduser1@ezcorp.local",
     "Phone": "555-0123"
+  },
+  {
+    "SamAccountName": "HawkUser24",
+    "GivenName": "Hawk",
+    "Surname": "User #24",
+    "DisplayName": "Hawk User #24",
+    "Type": "Employees",
+    "Department": "Technology",
+    "TargetOU": "Users/Employees/Technology",
+    "Description": "Secondary test account for VDI session hosts.",
+    "Email": "stduser2@ezcorp.local",
+    "Phone": "555-0124"
   }
 ]
