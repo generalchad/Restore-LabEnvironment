@@ -19,6 +19,8 @@ function Restore-ADStructure {
     $RootPath = "OU=$OrgNameInput,$DomainDN"
     $Prot = -not $DisableProtection
 
+    Write-Host "`n--- Restoring AD Structure ---" -ForegroundColor Cyan
+
     $rootExists = [bool](Get-ADObject -Filter "DistinguishedName -eq '$RootPath'")
 
     if (-not $rootExists) {
