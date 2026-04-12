@@ -54,7 +54,7 @@ function Restore-ADUsers {
                 $Key = $_.Name
                 $Val = $_.Value
 
-                if ($SystemLogic -contains $Key -or -not $Val) { return }
+                if ($SystemLogic -contains $Key -or [string]::IsNullOrWhiteSpace($Val)) { return }
 
                 $ParamName = if ($AttrMap.ContainsKey($Key)) { $AttrMap[$Key] } else { $Key }
 
