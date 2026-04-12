@@ -86,19 +86,6 @@ function Restore-ADGroupMemberships {
                     Write-Host "   [>] Nested $SAM into $RoleName" -ForegroundColor Gray
                 }
             }
-
-            $NativeGroups = if ($U.Tier -eq "0") { @("Enterprise Admins", "Domain Admins", "Schema Admins") }
-                            elseif ($U.Tier -eq "1") { @("Server Operators") } else { @() }
-
-            foreach ($GroupName in $NativeGroups) {
-                $nativeGroupObj = Get-ADGroup -Filter "Name -eq '$GroupName'" -ErrorAction SilentlyContinue
-                if ($nativeGroupObj -and ($userRefresh.MemberOf -notcontains $nativeGroupObj.DistinguishedName)) {
-                    if ($PSCmdlet.ShouldProcess($SAM, "Promote to Native Group")) {
-                        Add-ADGroupMember -Identity $GroupName -Members $SAM -ErrorAction Stop
-                        Write-Host "   [+] Promoted $SAM to native: $GroupName" -ForegroundColor Yellow
-                    }
-                }
-            }
         } catch { Write-Host "  [!] Failed Admin Logic for ${SAM}: $($_.Exception.Message)" -ForegroundColor Red }
     }
 
@@ -140,7 +127,7 @@ function Restore-ADGroupMemberships {
         }
     }
 
-    Write-Host "`n [i] Custom Exceptions..." -ForegroundColor White
+    Write-Host "`n [i] Custom Exceptions (JSON Assigned Native Groups)..." -ForegroundColor White
     $CustomUsers = $UserData | Where-Object { $_.Groups }
 
     foreach ($U in $CustomUsers) {

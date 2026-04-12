@@ -39,7 +39,12 @@
     "TargetOU": "_Admin/Tier 0/T0_Accounts",
     "Title": "Domain Architect",
     "Company": "EZCorp Global",
-    "Office": "Secure Operations Center"
+    "Office": "Secure Operations Center",
+    "Groups": [
+      { "Name": "Domain Admins", "TargetOU": "Users" },
+      { "Name": "Enterprise Admins", "TargetOU": "Users" },
+      { "Name": "Schema Admins", "TargetOU": "Users" }
+    ]
   },
   {
     "SamAccountName": "HawkUser23",
