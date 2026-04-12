@@ -72,10 +72,10 @@ cd C:\Path\To\Restore-AD
 
 ### Step 3: Execute the Orchestrator
 
-Execute `Restore-LabEnvironment.ps1`. You must provide the `-OrgName` parameter, which establishes the root OU for the deployment (e.g., passing `BrownCorp` will create and target `OU=_BROWNCORP,DC=domain,DC=com`).
+Execute `Restore-LabEnvironment.ps1`. You must provide the `-OrgName` parameter, which establishes the root OU for the deployment (e.g., passing `EzCorp` will create and target `OU=_EzCorp,DC=domain,DC=com`).
 
 ```powershell
-.\Restore-LabEnvironment.ps1 -OrgName "BrownCorp"
+.\Restore-LabEnvironment.ps1 -OrgName "EzCorp"
 ```
 
 **Optional Parameters:**
