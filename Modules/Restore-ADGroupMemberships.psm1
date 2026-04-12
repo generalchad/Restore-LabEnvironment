@@ -1,3 +1,12 @@
+#Requires -Modules ActiveDirectory
+
+<#
+.SYNOPSIS
+    Parses a JSON configuration file to provision Security/Distribution groups and handle nesting.
+.DESCRIPTION
+    Automates the creation of Global Baselines, Tiered Administrative Roles, Department-based Roles,
+    and Custom Exceptions. Handles native Active Directory indexing delays via Wait-ForADObject.
+#>
 function Restore-ADGroupMemberships {
     [CmdletBinding(SupportsShouldProcess=$true)]
     param(
@@ -9,7 +18,6 @@ function Restore-ADGroupMemberships {
     $Domain = Get-ADDomain
     $RootDN = "OU=$OrgNameInput,$($Domain.DistinguishedName)"
 
-    # 100% reliable array extraction to dodge PS5.1 pipeline bugs
     [array]$RawData = Get-Content $JsonPath -Raw | ConvertFrom-Json
     $UserData = @()
     foreach ($item in $RawData) {
@@ -18,10 +26,7 @@ function Restore-ADGroupMemberships {
 
     Write-Host "`n--- Processing Security Memberships ---" -ForegroundColor Magenta
 
-    # ==========================================
-    # PHASE 1: GLOBAL BASELINES
-    # ==========================================
-    Write-Host " [i] Phase 1: Global Baselines..." -ForegroundColor White
+    Write-Host " [i] Global Baselines..." -ForegroundColor White
     $BaselineGroups = @(
         @{ Name = "GRP-SEC-EVERYONE-GLOBAL"; Category = "Security";     Path = "Groups/Security" },
         @{ Name = "GRP-DISTRO-ALL-STAFF";    Category = "Distribution"; Path = "Groups/Distribution" }
@@ -42,7 +47,6 @@ function Restore-ADGroupMemberships {
         if ($globalGroupObj) {
             foreach ($U in $UserData) {
                 $SAM = $U.SamAccountName
-                # FIXED: Swapped -Identity for -Filter
                 $userRefresh = Get-ADUser -Filter "SamAccountName -eq '$SAM'" -Properties MemberOf
                 if ($userRefresh -and $userRefresh.MemberOf -notcontains $globalGroupObj.DistinguishedName) {
                     if ($PSCmdlet.ShouldProcess($SAM, "Add to Baseline")) {
@@ -54,10 +58,7 @@ function Restore-ADGroupMemberships {
         }
     }
 
-    # ==========================================
-    # PHASE 2: TIERED ADMIN ROLES
-    # ==========================================
-    Write-Host "`n [i] Phase 2: Tiered Admin Roles..." -ForegroundColor White
+    Write-Host "`n [i] Tiered Admin Roles..." -ForegroundColor White
     $AdminUsers = $UserData | Where-Object { $_.Type -eq "Admin" }
 
     foreach ($U in $AdminUsers) {
@@ -77,7 +78,6 @@ function Restore-ADGroupMemberships {
             }
 
             $roleGroupObj = Wait-ForADObject -Filter "Name -eq '$RoleName'" -Type "Group"
-            # FIXED: Swapped -Identity for -Filter
             $userRefresh = Get-ADUser -Filter "SamAccountName -eq '$SAM'" -Properties MemberOf
 
             if ($userRefresh -and $userRefresh.MemberOf -notcontains $roleGroupObj.DistinguishedName) {
@@ -102,10 +102,7 @@ function Restore-ADGroupMemberships {
         } catch { Write-Host "  [!] Failed Admin Logic for ${SAM}: $($_.Exception.Message)" -ForegroundColor Red }
     }
 
-    # ==========================================
-    # PHASE 3: DEPARTMENTAL ROLES
-    # ==========================================
-    Write-Host "`n [i] Phase 3: Departmental Roles..." -ForegroundColor White
+    Write-Host "`n [i] Departmental Roles..." -ForegroundColor White
     $RoleUsers = $UserData | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Department) }
     $GroupedByDept = $RoleUsers | Group-Object Department
 
@@ -129,7 +126,6 @@ function Restore-ADGroupMemberships {
             if ($roleGroupObj) {
                 foreach ($U in $DeptGroup.Group) {
                     $SAM = $U.SamAccountName
-                    # FIXED: Swapped -Identity for -Filter
                     $userRefresh = Get-ADUser -Filter "SamAccountName -eq '$SAM'" -Properties MemberOf
                     if ($userRefresh -and $userRefresh.MemberOf -notcontains $roleGroupObj.DistinguishedName) {
                         if ($PSCmdlet.ShouldProcess($SAM, "Add to Dept Role")) {
@@ -144,10 +140,7 @@ function Restore-ADGroupMemberships {
         }
     }
 
-    # ==========================================
-    # PHASE 4: CUSTOM EXCEPTION GROUPS
-    # ==========================================
-    Write-Host "`n [i] Phase 4: Custom Exceptions..." -ForegroundColor White
+    Write-Host "`n [i] Custom Exceptions..." -ForegroundColor White
     $CustomUsers = $UserData | Where-Object { $_.Groups }
 
     foreach ($U in $CustomUsers) {
@@ -167,7 +160,6 @@ function Restore-ADGroupMemberships {
 
                 $groupObj = Wait-ForADObject -Filter "Name -eq '$GName'" -Type "Group"
                 if ($groupObj) {
-                    # FIXED: Swapped -Identity for -Filter
                     $userRefresh = Get-ADUser -Filter "SamAccountName -eq '$SAM'" -Properties MemberOf
                     if ($userRefresh -and $userRefresh.MemberOf -notcontains $groupObj.DistinguishedName) {
                         if ($PSCmdlet.ShouldProcess($SAM, "Add to Custom Group")) {

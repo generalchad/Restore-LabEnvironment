@@ -1,5 +1,9 @@
 #Requires -Modules ActiveDirectory
 
+<#
+.SYNOPSIS
+    Converts a slash-separated string into a standard Active Directory Distinguished Name.
+#>
 function Get-LabDN {
     [CmdletBinding()]
     param(
@@ -15,6 +19,10 @@ function Get-LabDN {
     return "$OUPath,$RootDN"
 }
 
+<#
+.SYNOPSIS
+    Validates and auto-creates missing parent Organizational Units for a given path.
+#>
 function Assert-OUPath {
     [CmdletBinding()]
     param(
@@ -30,8 +38,6 @@ function Assert-OUPath {
 
     foreach ($P in $Parts) {
         $TargetDN = "OU=$P,$CurrentParentDN"
-
-        # FIXED: Use Filter instead of Identity to prevent Transcript error spam
         $ouExists = [bool](Get-ADObject -Filter "DistinguishedName -eq '$TargetDN'")
 
         if (-not $ouExists) {
@@ -43,11 +49,14 @@ function Assert-OUPath {
                 throw $_
             }
         }
-
         $CurrentParentDN = $TargetDN
     }
 }
 
+<#
+.SYNOPSIS
+    Polls Active Directory until a newly created object is indexed and fully retrievable.
+#>
 function Wait-ForADObject {
     [CmdletBinding()]
     param(

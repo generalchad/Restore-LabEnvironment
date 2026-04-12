@@ -1,3 +1,15 @@
+<#
+.SYNOPSIS
+    Master orchestration script for Automated Active Directory Lab Restoration.
+.DESCRIPTION
+    Validates administrative privileges and required RSAT modules before sequentially executing
+    infrastructure-as-code deployments for OUs, Users, Group Memberships, and Group Policies.
+    Generates a persistent transcript log for every execution.
+.PARAMETER OrgName
+    The base name of the root organization (e.g., "BrownCorp").
+.PARAMETER DisableProtection
+    Disables the "Protect from accidental deletion" flag on created OUs.
+#>
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
     [Parameter(Mandatory=$true)]
@@ -75,7 +87,6 @@ try {
     Write-LabLog "Step 2: Restoring AD Users..." "INFO"
     Restore-ADUsers @UserParams
 
-    # FIXED: Swapped Step 3 and Step 4 so Groups exist before GPOs need them
     Write-LabLog "Step 3: Restoring Group Memberships..." "INFO"
     Restore-ADGroupMemberships @MemberParams
 

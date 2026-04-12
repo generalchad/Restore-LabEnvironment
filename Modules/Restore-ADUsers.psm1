@@ -1,3 +1,12 @@
+#Requires -Modules ActiveDirectory
+
+<#
+.SYNOPSIS
+    Parses a JSON configuration file to provision Active Directory Users.
+.DESCRIPTION
+    Dynamically maps standard JSON properties to native New-ADUser parameters, and funnels
+    unrecognized properties into the -OtherAttributes hashtable for extended schema support.
+#>
 function Restore-ADUsers {
     [CmdletBinding(SupportsShouldProcess=$true)]
     param(
@@ -10,10 +19,7 @@ function Restore-ADUsers {
     $Pass = ConvertTo-SecureString "Welcome1" -AsPlainText -Force
     [array]$UserData = Get-Content $JsonPath -Raw | ConvertFrom-Json
 
-    # 1. System Logic (Skip these entirely)
     $SystemLogic = @('Type', 'Tier', 'Groups', 'TargetOU')
-
-    # 2. Friendly Mapping
     $AttrMap = @{
         'Email'     = 'EmailAddress'
         'Phone'     = 'OfficePhone'
@@ -23,7 +29,6 @@ function Restore-ADUsers {
         'Zip'       = 'PostalCode'
     }
 
-    # 3. Get native New-ADUser parameters dynamically
     $ValidNativeParams = (Get-Command New-ADUser).Parameters.Keys
 
     Write-Host "`n--- Restoring AD Users with Extended Attributes ---" -ForegroundColor Cyan
@@ -47,9 +52,8 @@ function Restore-ADUsers {
                 ErrorAction       = "Stop"
             }
 
-            $OtherAttributes = @{} # Catch-all for non-native AD fields
+            $OtherAttributes = @{}
 
-            # Route JSON properties
             $U.psobject.Properties | ForEach-Object {
                 $Key = $_.Name
                 $Val = $_.Value
@@ -58,7 +62,6 @@ function Restore-ADUsers {
 
                 $ParamName = if ($AttrMap.ContainsKey($Key)) { $AttrMap[$Key] } else { $Key }
 
-                # If New-ADUser natively supports it, add to main splat. Otherwise, pack into OtherAttributes.
                 if ($ValidNativeParams -contains $ParamName) {
                     $UserParams[$ParamName] = $Val
                 } else {
@@ -77,8 +80,6 @@ function Restore-ADUsers {
             if (-not (Get-ADUser -Filter "SamAccountName -eq '$SAM'" -ErrorAction SilentlyContinue)) {
                 if ($PSCmdlet.ShouldProcess($SAM, "Create User")) {
                     New-ADUser @UserParams
-
-                    # --- UPDATED CONSOLE OUTPUT ---
                     Write-Host "  [+] Created: $SAM in $($U.TargetOU)" -ForegroundColor Green
 
                     if ($OtherAttributes.Count -gt 0) {

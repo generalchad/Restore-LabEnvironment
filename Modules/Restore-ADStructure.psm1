@@ -1,14 +1,24 @@
 #Requires -Modules ActiveDirectory
 
+<#
+.SYNOPSIS
+    Parses a JSON configuration file to build an Active Directory Organizational Unit (OU) structure.
+.DESCRIPTION
+    Dynamically creates OUs based on Parent/Child relationships defined in JSON. Utilizes
+    Get-ADObject filtering to prevent transcript pollution during existence checks.
+#>
 function Restore-ADStructure {
     [CmdletBinding(SupportsShouldProcess=$true)]
-    param([string]$OrgNameInput, [string]$JsonPath, [switch]$DisableProtection)
+    param(
+        [string]$OrgNameInput,
+        [string]$JsonPath,
+        [switch]$DisableProtection
+    )
 
     $DomainDN = (Get-ADDomain).DistinguishedName
     $RootPath = "OU=$OrgNameInput,$DomainDN"
     $Prot = -not $DisableProtection
 
-    # FIXED: Use Filter instead of Identity to prevent Transcript error spam
     $rootExists = [bool](Get-ADObject -Filter "DistinguishedName -eq '$RootPath'")
 
     if (-not $rootExists) {
@@ -31,7 +41,6 @@ function Restore-ADStructure {
         $Depth = if ([string]::IsNullOrWhiteSpace($OU.ParentOU)) { 0 } else { ($OU.ParentOU -split '/').Count }
         $Indent = "  " * (($Depth * 2) + 1)
 
-        # FIXED: Use Filter instead of Identity to prevent Transcript error spam
         $ouExists = [bool](Get-ADObject -Filter "DistinguishedName -eq '$Target'")
 
         if (-not $ouExists) {
