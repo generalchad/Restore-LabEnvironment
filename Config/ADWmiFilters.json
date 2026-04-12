@@ -1,0 +1,12 @@
+[
+  {
+    "Name": "WMI-Filter-ClientOS",
+    "Description": "Targets Windows Client Operating Systems (Windows 10, Windows 11).",
+    "Query": "SELECT * FROM Win32_OperatingSystem WHERE ProductType = 1"
+  },
+  {
+    "Name": "WMI-Filter-ServerOS",
+    "Description": "Targets Windows Server Operating Systems (Domain Controllers and Standard Servers).",
+    "Query": "SELECT * FROM Win32_OperatingSystem WHERE ProductType = 2 OR ProductType = 3"
+  }
+]

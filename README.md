@@ -31,7 +31,8 @@ Restore-AD/
 ├── Config/
 │   ├── ADStructure.json
 │   ├── ADUserData.json
-│   └── ADGroupPolicies.json
+│   ├── ADGroupPolicies.json
+│   └── ADWmiFilters.json
 ├── Logs/
 │   └── (Log files will auto-generate here)
 └── Modules/
@@ -39,7 +40,8 @@ Restore-AD/
     ├── Restore-ADStructure.psm1
     ├── Restore-ADUsers.psm1
     ├── Restore-ADGroupMemberships.psm1
-    └── Restore-ADGroupPolicies.psm1
+    ├── Restore-ADGroupPolicies.psm1
+    └── Restore-ADWmiFilters.psm1
 ```
 
 ## Configuration Guide
@@ -49,6 +51,122 @@ Before executing the deployment, customize the environment by editing the files 
 * **ADStructure.json:** Defines the Organizational Unit (OU) hierarchy. Use `ParentOU` to nest OUs. Leave `ParentOU` blank to place the OU at the deployment root.
 * **ADUserData.json:** Defines user objects and their attributes. Map users to specific OUs, define their administrative tier, and assign them to roles. Non-standard attributes will be written directly to the AD object.
 * **ADGroupPolicies.json:** Defines security baselines and registry preferences. Assigns policies to target OUs and supports Security Filtering via MS16-072 compliant permission mapping.
+* **ADWmiFilters.json:** Defines reusable WMI filters (Name, Description, Query) that are created in AD and can be linked to GPOs.
+
+### OU Structure Configuration
+
+Each OU object in `ADStructure.json` uses the following schema:
+
+```json
+{
+    "Name": "Laptops",
+    "ParentOU": "Workstations"
+}
+```
+
+Guidance:
+
+* `Name` is the OU name to create.
+* `ParentOU` is a slash-delimited relative path from the org root OU.
+* Use an empty `ParentOU` (`""`) to create a top-level OU under the org root.
+
+Example top-level OU:
+
+```json
+{
+    "Name": "Workstations",
+    "ParentOU": ""
+}
+```
+
+### User Data Configuration
+
+Each user object in `ADUserData.json` supports a core set of required fields plus optional identity and organizational metadata.
+
+Minimum practical schema:
+
+```json
+{
+    "SamAccountName": "jdoe",
+    "GivenName": "John",
+    "Surname": "Doe",
+    "DisplayName": "John Doe",
+    "TargetOU": "Users/Employees"
+}
+```
+
+Optional fields include `Type`, `Tier`, `Description`, `Title`, `Department`, `Company`, contact attributes, address attributes, home/profile paths, and employee identifiers.
+
+To define group assignments, use `Groups` as an array:
+
+```json
+{
+    "SamAccountName": "jdoe",
+    "TargetOU": "Users/Employees",
+    "Groups": [
+        { "Name": "GRP-SEC-CustomRole", "TargetOU": "Groups/Security" }
+    ]
+}
+```
+
+Template behavior:
+
+* The built-in `TEMPLATE_USER_DO_NOT_DELETE` record is intentionally skipped by the restore process and serves as a field reference.
+
+### Group Policy Configuration
+
+Each GPO object in `ADGroupPolicies.json` uses this schema pattern:
+
+```json
+{
+    "DisplayName": "GPO-SEC-WKS-Baseline",
+    "TargetOU": "Workstations",
+    "Comment": "General workstation security baseline.",
+    "Enforced": false,
+    "WmiFilterName": "WMI-Filter-ClientOS",
+    "RemoveAuthUsersApply": false,
+    "SecurityFilters": ["Domain Computers"],
+    "Settings": [
+        {
+            "Key": "HKLM\\Software\\Policies\\Contoso",
+            "ValueName": "ExampleSetting",
+            "Type": "DWord",
+            "Value": 1
+        }
+    ]
+}
+```
+
+Guidance:
+
+* `DisplayName` is required and must be unique in the domain.
+* `TargetOU` can be empty (`""`) to link at the org root OU.
+* `Enforced` controls link enforcement for the target OU.
+* `WmiFilterName` must match a filter `Name` from `ADWmiFilters.json`.
+* `Settings` defines Registry Preference entries applied to the GPO.
+* `SecurityFilters` and `RemoveAuthUsersApply` are optional and control GPO security filtering.
+
+### WMI Filter Configuration
+
+Each WMI filter object in `ADWmiFilters.json` uses the following schema:
+
+```json
+{
+    "Name": "WMI-Filter-ClientOS",
+    "Description": "Targets Windows Client Operating Systems.",
+    "Query": "SELECT * FROM Win32_OperatingSystem WHERE ProductType = 1"
+}
+```
+
+To bind a filter to a GPO, set `WmiFilterName` in `ADGroupPolicies.json` to a matching filter `Name`.
+
+```json
+{
+    "DisplayName": "GPO-SEC-SRV-Baseline",
+    "TargetOU": "Servers",
+    "WmiFilterName": "WMI-Filter-ServerOS"
+}
+```
 
 ## Deployment Walkthrough
 
@@ -91,6 +209,5 @@ Upon completion, the orchestrator will output the location of the transcript log
 
 Future capabilities planned for integration into the framework include:
 
-* **WMI Filter Automation:** Support for defining, generating, and linking WMI Filters directly via the `GPMgmt.GPM` COM interface to enforce hardware and OS-specific policy targeting.
 * **Automated Workstation Joining:** Subroutines to automatically domain-join specified virtual machines and move them to their correct staging OUs.
 * **LAPS Integration:** Automated deployment of the Local Administrator Password Solution schema and corresponding group policies.

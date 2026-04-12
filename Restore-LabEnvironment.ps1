@@ -19,7 +19,8 @@ param(
 
     [string]$StructureJson = "$PSScriptRoot\Config\ADStructure.json",
     [string]$UserDataJson  = "$PSScriptRoot\Config\ADUserData.json",
-    [string]$GpoJson       = "$PSScriptRoot\Config\ADGroupPolicies.json"
+    [string]$GpoJson       = "$PSScriptRoot\Config\ADGroupPolicies.json",
+    [string]$WmiFilterJson = "$PSScriptRoot\Config\ADWmiFilters.json"
 )
 
 Set-StrictMode -Version Latest
@@ -49,7 +50,7 @@ try {
     Write-LabLog "Loading Lab Modules..." "INFO"
     Import-Module ActiveDirectory, GroupPolicy -ErrorAction Stop
 
-    $CustomModules = @("Restore-LabUtils", "Restore-ADStructure", "Restore-ADUsers", "Restore-ADGroupPolicies", "Restore-ADGroupMemberships")
+    $CustomModules = @("Restore-LabUtils", "Restore-ADStructure", "Restore-ADUsers", "Restore-ADGroupPolicies", "Restore-ADGroupMemberships", "Restore-ADWmiFilters")
     foreach ($M in $CustomModules) {
         $P = Join-Path $PSScriptRoot "Modules\$M.psm1"
         if (Test-Path $P) {
@@ -77,6 +78,7 @@ $StructureParams = @{ OrgNameInput = $CleanOrg; DisableProtection = $DisableProt
 $UserParams      = @{ OrgNameInput = $CleanOrg; JsonPath = $UserDataJson; ErrorAction = 'Stop' }
 $GpoParams       = @{ OrgNameInput = $CleanOrg; JsonPath = $GpoJson; ErrorAction = 'Stop' }
 $MemberParams    = @{ OrgNameInput = $CleanOrg; JsonPath = $UserDataJson; ErrorAction = 'Stop' }
+$WmiParams       = @{ JsonPath = $WmiFilterJson; ErrorAction = 'Stop' }
 
 try {
     Start-Transcript -Path $LogPath -Append -Force | Out-Null
@@ -90,7 +92,10 @@ try {
     Write-LabLog "Step 3: Restoring Group Memberships..." "INFO"
     Restore-ADGroupMemberships @MemberParams
 
-    Write-LabLog "Step 4: Restoring Group Policies..." "INFO"
+    Write-LabLog "Step 4: Restoring WMI Filters..." "INFO"
+    Restore-ADWmiFilters @WmiParams
+
+    Write-LabLog "Step 5: Restoring Group Policies..." "INFO"
     Restore-ADGroupPolicies @GpoParams
 
     Write-LabLog "Restoration Complete. Log saved to $LogPath" "HEAD"
